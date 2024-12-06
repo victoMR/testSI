@@ -1,176 +1,202 @@
+import streamlit as st
 import paramiko
-import socket
 import threading
-import sys
-import os
+import queue
+import time
+from typing import Optional, Dict, Any
 
 
-class SecureChatServer:
-    def __init__(self, host='0.0.0.0', port=2222):
-        """
-        Initialize the SSH chat server with key-based authentication.
-
-        Security Features:
-        1. SSH protocol for encrypted communication
-        2. Key-based authentication
-        3. Server-side host key generation
-        4. Secure message exchange
-        """
-        # Generate host keys for the server
-        self.host_key = paramiko.RSAKey.generate(2048)
-
-        self.host = host
-        self.port = port
-
-        # Store connected clients
-        self.clients = {}
-
-        # Create server socket
-        self.server_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-        self.server_socket.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
-        self.server_socket.bind((self.host, self.port))
-
-    def start_server(self):
-        """
-        Start the SSH chat server and listen for incoming connections.
-        """
-        # Configure SSH server
-        ssh_server = paramiko.ServerInterface()
-        self.server_socket.listen(5)
-        print(f"[*] Listening on {self.host}:{self.port}")
-
-        while True:
-            try:
-                client_socket, addr = self.server_socket.accept()
-                print(f"[*] Accepted connection from {addr[0]}:{addr[1]}")
-
-                # Create a transport layer for SSH
-                transport = paramiko.Transport(client_socket)
-                transport.add_server_key(self.host_key)
-
-                # Setup authentication
-                ssh_server = SSHChatServer()
-                transport.start_server(server=ssh_server)
-
-            except Exception as e:
-                print(f"[!] Error: {e}")
-                continue
-
-
-class SSHChatServer(paramiko.ServerInterface):
+class SSHChatManager:
     def __init__(self):
-        """
-        Custom SSH server authentication and channel handling.
-        """
-        self.event = threading.Event()
+        # Inicialización de colas para comunicación entre hilos
+        self.server_recv_queue = queue.Queue()
+        self.client_recv_queue = queue.Queue()
+        self.server_send_queue = queue.Queue()
+        self.client_send_queue = queue.Queue()
 
-    def check_auth_password(self, username, password):
-        """
-        Simple password authentication.
-        In a real-world scenario, replace with secure password checking.
-        """
-        return paramiko.AUTH_SUCCESSFUL if username == 'admin' and password == 'secure_chat_pass' else paramiko.AUTH_FAILED
+        # Estado de conexiones
+        self.server_connected = False
+        self.client_connected = False
 
-    def check_channel_request(self, kind, chanid):
-        """
-        Allow only session channels for chat communication.
-        """
-        return paramiko.OPEN_SUCCEEDED if kind == 'session' else paramiko.OPEN_FAILED_ADMINISTRATIVELY_PROHIBITED
+        # Objetos de conexión SSH
+        self.server_ssh: Optional[paramiko.SSHClient] = None
+        self.client_ssh: Optional[paramiko.SSHClient] = None
 
-
-class SecureChatClient:
-    def __init__(self, host, port, username, password):
-        """
-        Initialize SSH chat client with secure connection parameters.
-
-        Security Features:
-        1. Encrypted SSH connection
-        2. Password-based authentication
-        3. Secure message transmission
-        """
-        self.host = host
-        self.port = port
-        self.username = username
-        self.password = password
-
-    def connect_and_chat(self):
-        """
-        Establish a secure SSH connection and start chat session.
-        """
+    def connect_server(self, hostname: str, username: str, password: str, port: int = 22):
+        """Establecer conexión SSH como servidor"""
         try:
-            # Create SSH client
-            client = paramiko.SSHClient()
+            self.server_ssh = paramiko.SSHClient()
+            self.server_ssh.set_missing_host_key_policy(paramiko.AutoAddPolicy())
+            self.server_ssh.connect(hostname, port, username, password)
+            self.server_connected = True
 
-            # Automatically add server's host key
-            client.set_missing_host_key_policy(paramiko.AutoAddPolicy())
+            # Iniciar hilo para recibir mensajes del servidor
+            threading.Thread(target=self._server_receive_messages, daemon=True).start()
 
-            # Connect to the server
-            client.connect(
-                hostname=self.host,
-                port=self.port,
-                username=self.username,
-                password=self.password
-            )
-
-            # Open an interactive shell session
-            channel = client.invoke_shell()
-
-            # Start threads for sending and receiving messages
-            send_thread = threading.Thread(target=self._send_messages, args=(channel,))
-            recv_thread = threading.Thread(target=self._receive_messages, args=(channel,))
-
-            send_thread.start()
-            recv_thread.start()
-
-            send_thread.join()
-            recv_thread.join()
-
-            client.close()
-
+            return True
         except Exception as e:
-            print(f"[!] Connection Error: {e}")
+            st.error(f"Error conectando al servidor: {e}")
+            return False
 
-    def _send_messages(self, channel):
-        """
-        Send messages securely through the SSH channel.
-        """
-        while True:
-            message = input("You: ")
-            if message.lower() == 'exit':
-                channel.send(message + '\n')
-                break
-            channel.send(message + '\n')
+    def connect_client(self, hostname: str, username: str, password: str, port: int = 22):
+        """Establecer conexión SSH como cliente"""
+        try:
+            self.client_ssh = paramiko.SSHClient()
+            self.client_ssh.set_missing_host_key_policy(paramiko.AutoAddPolicy())
+            self.client_ssh.connect(hostname, port, username, password)
+            self.client_connected = True
 
-    def _receive_messages(self, channel):
-        """
-        Receive messages securely through the SSH channel.
-        """
-        while True:
-            if channel.recv_ready():
-                data = channel.recv(1024).decode('utf-8')
-                if not data:
-                    break
-                print(data, end='')
+            # Iniciar hilo para recibir mensajes del cliente
+            threading.Thread(target=self._client_receive_messages, daemon=True).start()
 
-            if channel.exit_status_ready():
-                break
+            return True
+        except Exception as e:
+            st.error(f"Error conectando como cliente: {e}")
+            return False
+
+    def _server_receive_messages(self):
+        """Hilo para recibir mensajes desde el servidor"""
+        try:
+            # Establecer canal de comunicación
+            channel = self.server_ssh.invoke_shell()
+            while self.server_connected:
+                if channel.recv_ready():
+                    mensaje = channel.recv(1024).decode('utf-8')
+                    self.server_recv_queue.put(mensaje)
+
+                # Enviar mensajes si hay en la cola de envío
+                if not self.server_send_queue.empty():
+                    msg_to_send = self.server_send_queue.get()
+                    channel.send(msg_to_send + '\n')
+
+                time.sleep(0.1)
+        except Exception as e:
+            st.error(f"Error en recepción de servidor: {e}")
+            self.server_connected = False
+
+    def _client_receive_messages(self):
+        """Hilo para recibir mensajes desde el cliente"""
+        try:
+            # Establecer canal de comunicación
+            channel = self.client_ssh.invoke_shell()
+            while self.client_connected:
+                if channel.recv_ready():
+                    mensaje = channel.recv(1024).decode('utf-8')
+                    self.client_recv_queue.put(mensaje)
+
+                # Enviar mensajes si hay en la cola de envío
+                if not self.client_send_queue.empty():
+                    msg_to_send = self.client_send_queue.get()
+                    channel.send(msg_to_send + '\n')
+
+                time.sleep(0.1)
+        except Exception as e:
+            st.error(f"Error en recepción de cliente: {e}")
+            self.client_connected = False
+
+    def send_server_message(self, message: str):
+        """Encolar mensaje para enviar al servidor"""
+        if self.server_connected:
+            self.server_send_queue.put(message)
+
+    def send_client_message(self, message: str):
+        """Encolar mensaje para enviar al cliente"""
+        if self.client_connected:
+            self.client_send_queue.put(message)
+
+    def get_server_messages(self) -> list:
+        """Obtener mensajes recibidos del servidor"""
+        messages = []
+        while not self.server_recv_queue.empty():
+            messages.append(self.server_recv_queue.get())
+        return messages
+
+    def get_client_messages(self) -> list:
+        """Obtener mensajes recibidos del cliente"""
+        messages = []
+        while not self.client_recv_queue.empty():
+            messages.append(self.client_recv_queue.get())
+        return messages
 
 
 def main():
-    # Example usage demonstrating server and client setup
-    if len(sys.argv) > 1 and sys.argv[1] == 'server':
-        # Start secure SSH chat server
-        server = SecureChatServer()
-        server.start_server()
-    else:
-        # Start secure SSH chat client
-        client = SecureChatClient(
-            host='localhost',
-            port=2222,
-            username='admin',
-            password='secure_chat_pass'
-        )
-        client.connect_and_chat()
+    st.title("Chat SSH Bidireccional")
+
+    # Inicializar gestor de SSH si no existe
+    if 'ssh_manager' not in st.session_state:
+        st.session_state.ssh_manager = SSHChatManager()
+        st.session_state.server_messages = []
+        st.session_state.client_messages = []
+
+    # Sección de conexión
+    with st.sidebar:
+        st.header("Configuración de Conexión")
+        connection_type = st.radio("Tipo de Conexión",
+                                   ["Servidor", "Cliente"],
+                                   key="connection_type")
+
+        # Formulario de conexión
+        with st.form("ssh_connection"):
+            hostname = st.text_input("Hostname")
+            username = st.text_input("Username")
+            password = st.text_input("Password", type="password")
+            port = st.number_input("Puerto", value=22, min_value=1, max_value=65535)
+
+            submit = st.form_submit_button("Conectar")
+
+        # Proceso de conexión
+        if submit:
+            try:
+                if connection_type == "Servidor":
+                    connected = st.session_state.ssh_manager.connect_server(
+                        hostname, username, password, port
+                    )
+                else:
+                    connected = st.session_state.ssh_manager.connect_client(
+                        hostname, username, password, port
+                    )
+
+                if connected:
+                    st.success(
+                        f"Conexión {'del servidor' if connection_type == 'Servidor' else 'del cliente'} establecida")
+            except Exception as e:
+                st.error(f"Error de conexión: {e}")
+
+    # Sección de chat
+    st.header("Chat SSH")
+
+    # Pestañas para servidor y cliente
+    tab1, tab2 = st.tabs(["Servidor", "Cliente"])
+
+    with tab1:
+        # Mensajes del servidor
+        st.subheader("Mensajes Recibidos (Servidor)")
+        server_messages = st.session_state.ssh_manager.get_server_messages()
+        for msg in server_messages:
+            st.text(msg)
+
+        # Envío de mensajes del servidor
+        with st.form("server_message_form"):
+            server_msg = st.text_input("Mensaje del Servidor", key="server_input")
+            server_send = st.form_submit_button("Enviar Mensaje")
+
+            if server_send and server_msg:
+                st.session_state.ssh_manager.send_server_message(server_msg)
+
+    with tab2:
+        # Mensajes del cliente
+        st.subheader("Mensajes Recibidos (Cliente)")
+        client_messages = st.session_state.ssh_manager.get_client_messages()
+        for msg in client_messages:
+            st.text(msg)
+
+        # Envío de mensajes del cliente
+        with st.form("client_message_form"):
+            client_msg = st.text_input("Mensaje del Cliente", key="client_input")
+            client_send = st.form_submit_button("Enviar Mensaje")
+
+            if client_send and client_msg:
+                st.session_state.ssh_manager.send_client_message(client_msg)
 
 
 if __name__ == "__main__":

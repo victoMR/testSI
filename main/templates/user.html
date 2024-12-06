@@ -1,0 +1,15 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Usuario Autenticado</title>
+</head>
+<body>
+    <h1>¡Hola, {{ user['login'] }}!</h1>
+    <p>Nombre: {{ user.get('name', 'No disponible') }}</p>
+    <p>Email: {{ user.get('email', 'No disponible') }}</p>
+    <p>URL de GitHub: <a href="{{ user['html_url'] }}">{{ user['html_url'] }}</a></p>
+    <img src="{{ user['avatar_url'] }}" alt="Avatar" width="100">
+</body>
+</html>
