@@ -7,7 +7,7 @@ function App() {
   const [newBlockData, setNewBlockData] = useState("");
   const [isChainValid, setIsChainValid] = useState(null);
 
-  const API_URL = "http://127.0.0.1:5000";
+  const API_URL = "https://testsi.onrender.com/";
 
   const fetchBlockchain = async () => {
     try {
