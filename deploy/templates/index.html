@@ -1,0 +1,46 @@
+```html
+{% extends "base.html" %}
+
+{% block content %}
+<div class="text-center mt-5">
+    <h1 class="display-4">Bienvenido al Portafolio de Seguridad</h1>
+    <p class="lead">Explora diferentes técnicas de seguridad informática</p>
+    <div class="row mt-4">
+        <div class="col-md-10 offset-md-1">
+            <div class="card">
+                <div class="card-body">
+                    <h5 class="card-title">Módulos de Seguridad</h5>
+                    <p class="card-text">Este portafolio demuestra conceptos fundamentales de seguridad informática:</p>
+                    <div class="row">
+                        <div class="col-md-6">
+                            <ul class="list-group list-group-flush">
+                                <li class="list-group-item">
+                                    <strong>Cifrado Simétrico</strong>
+                                    <small class="d-block text-muted">Usando Fernet de Cryptography</small>
+                                </li>
+                                <li class="list-group-item">
+                                    <strong>Cifrado Asimétrico</strong>
+                                    <small class="d-block text-muted">Con RSA y padding OAEP</small>
+                                </li>
+                            </ul>
+                        </div>
+                        <div class="col-md-6">
+                            <ul class="list-group list-group-flush">
+                                <li class="list-group-item">
+                                    <strong>Funciones Hash</strong>
+                                    <small class="d-block text-muted">SHA-256, MD5, SHA-1</small>
+                                </li>
+                                <li class="list-group-item">
+                                    <strong>Certificados SSL</strong>
+                                    <small class="d-block text-muted">Generación y verificación</small>
+                                </li>
+                            </ul>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+```

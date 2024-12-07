@@ -1,0 +1,139 @@
+{% extends "base.html" %}
+
+{% block title %}Cifrado Asimétrico{% endblock %}
+
+{% block content %}
+<div class="row">
+    <div class="col-md-12">
+        <h1 class="mb-4">Cifrado Asimétrico (RSA)</h1>
+
+        <div class="card mb-4">
+            <div class="card-header">
+                Clave Pública
+            </div>
+            <div class="card-body">
+                <pre id="public-key">{{ public_key }}</pre>
+                <button id="regenerate-keypair" class="btn btn-warning">Regenerar Par de Claves</button>
+            </div>
+        </div>
+
+        <div class="row">
+            <div class="col-md-6">
+                <div class="card">
+                    <div class="card-header">
+                        Cifrar Mensaje
+                    </div>
+                    <div class="card-body">
+                        <form id="encrypt-form">
+                            <div class="mb-3">
+                                <label for="encrypt-message" class="form-label">Mensaje a Cifrar</label>
+                                <textarea id="encrypt-message" class="form-control" rows="4"></textarea>
+                            </div>
+                            <button type="submit" class="btn btn-primary">Cifrar</button>
+                        </form>
+                        <div id="encrypted-result" class="mt-3">
+                            <strong>Mensaje Cifrado:</strong>
+                            <pre id="encrypted-message"></pre>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="col-md-6">
+                <div class="card">
+                    <div class="card-header">
+                        Descifrar Mensaje
+                    </div>
+                    <div class="card-body">
+                        <form id="decrypt-form">
+                            <div class="mb-3">
+                                <label for="decrypt-message" class="form-label">Mensaje Cifrado (Base64)</label>
+                                <textarea id="decrypt-message" class="form-control" rows="4"></textarea>
+                            </div>
+                            <button type="submit" class="btn btn-primary">Descifrar</button>
+                        </form>
+                        <div id="decrypted-result" class="mt-3">
+                            <strong>Mensaje Descifrado:</strong>
+                            <pre id="decrypted-message"></pre>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+$(document).ready(function() {
+    $('#encrypt-form').on('submit', function(e) {
+        e.preventDefault();
+        const message = $('#encrypt-message').val();
+
+        $.ajax({
+            url: '/asymmetric-encryption',
+            method: 'POST',
+            data: {
+                action: 'encrypt',
+                message: message
+            },
+            success: function(response) {
+                if (response.status === 'success') {
+                    $('#encrypted-message').text(response.encrypted_message);
+                } else {
+                    $('#encrypted-message').text('Error: ' + response.message);
+                }
+            },
+            error: function() {
+                $('#encrypted-message').text('Error en la solicitud');
+            }
+        });
+    });
+
+    $('#decrypt-form').on('submit', function(e) {
+        e.preventDefault();
+        const message = $('#decrypt-message').val();
+
+        $.ajax({
+            url: '/asymmetric-encryption',
+            method: 'POST',
+            data: {
+                action: 'decrypt',
+                message: message
+            },
+            success: function(response) {
+                if (response.status === 'success') {
+                    $('#decrypted-message').text(response.decrypted_message);
+                } else {
+                    $('#decrypted-message').text('Error: ' + response.message);
+                }
+            },
+            error: function() {
+                $('#decrypted-message').text('Error en la solicitud');
+            }
+        });
+    });
+
+    $('#regenerate-keypair').on('click', function() {
+        $.ajax({
+            url: '/asymmetric-encryption',
+            method: 'POST',
+            data: {
+                action: 'regenerate_keypair'
+            },
+            success: function(response) {
+                if (response.status === 'success') {
+                    $('#public-key').text(response.public_key);
+                } else {
+                    alert('Error al regenerar el par de claves');
+                }
+            },
+            error: function() {
+                alert('Error en la solicitud');
+            }
+        });
+    });
+});
+</script>
+{% endblock %}

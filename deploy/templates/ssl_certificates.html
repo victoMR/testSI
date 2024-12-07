@@ -1,0 +1,216 @@
+{% extends "base.html" %}
+
+{% block title %}Generación de Certificados SSL{% endblock %}
+
+{% block content %}
+<div class="card">
+    <div class="card-header">
+        <h2 class="text-center">Generación de Certificados SSL Autofirmados</h2>
+    </div>
+    <div class="card-body">
+        <form id="certificateForm">
+            <div class="row">
+                <div class="col-md-6 mb-3">
+                    <label for="pais" class="form-label">País</label>
+                    <input type="text" class="form-control" id="pais" name="pais" value="MX" required>
+                </div>
+                <div class="col-md-6 mb-3">
+                    <label for="estado" class="form-label">Estado</label>
+                    <input type="text" class="form-control" id="estado" name="estado" value="Querétaro" required>
+                </div>
+            </div>
+            <div class="row">
+                <div class="col-md-6 mb-3">
+                    <label for="localidad" class="form-label">Localidad</label>
+                    <input type="text" class="form-control" id="localidad" name="localidad" value="Ciudad" required>
+                </div>
+                <div class="col-md-6 mb-3">
+                    <label for="organizacion" class="form-label">Organización</label>
+                    <input type="text" class="form-control" id="organizacion" name="organizacion" value="Mi Organización" required>
+                </div>
+            </div>
+            <div class="row">
+                <div class="col-md-6 mb-3">
+                    <label for="dominio" class="form-label">Dominio</label>
+                    <input type="text" class="form-control" id="dominio" name="dominio" value="localhost" required>
+                </div>
+                <div class="col-md-6 mb-3">
+                    <label for="dias_validez" class="form-label">Días de Validez</label>
+                    <input type="number" class="form-control" id="dias_validez" name="dias_validez" value="365" min="1" max="3650" required>
+                </div>
+            </div>
+            <button type="submit" class="btn btn-primary w-100">Generar Certificado SSL</button>
+        </form>
+    </div>
+</div>
+
+<div id="certificateDetails" class="card mt-4" style="display: none;">
+    <div class="card-header">
+        <h3 class="text-center">Detalles del Certificado</h3>
+    </div>
+    <div class="card-body">
+        <div class="row">
+            <div class="col-md-6">
+                <h4>Certificado PEM</h4>
+                <pre id="certificatePEM"></pre>
+            </div>
+            <div class="col-md-6">
+                <h4>Llave Privada PEM</h4>
+                <pre id="privateKeyPEM"></pre>
+            </div>
+        </div>
+        <div class="row mt-3">
+            <div class="col-12">
+                <h4>Detalles del Certificado</h4>
+                <table class="table table-striped">
+                    <tbody>
+                        <tr>
+                            <th>Emisor</th>
+                            <td id="issuerDetails"></td>
+                        </tr>
+                        <tr>
+                            <th>Sujeto</th>
+                            <td id="subjectDetails"></td>
+                        </tr>
+                        <tr>
+                            <th>Válido Desde</th>
+                            <td id="validFrom"></td>
+                        </tr>
+                        <tr>
+                            <th>Válido Hasta</th>
+                            <td id="validTo"></td>
+                        </tr>
+                        <tr>
+                            <th>Número de Serie</th>
+                            <td id="serialNumber"></td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div id="verificationSection" class="card mt-4">
+    <div class="card-header">
+        <h3 class="text-center">Verificación de Certificado</h3>
+    </div>
+    <div class="card-body">
+        <form id="verificationForm">
+            <div class="mb-3">
+                <label for="certificateInput" class="form-label">Ingrese Certificado PEM</label>
+                <textarea class="form-control" id="certificateInput" rows="5" required></textarea>
+            </div>
+            <button type="submit" class="btn btn-secondary w-100">Verificar Certificado</button>
+        </form>
+    </div>
+</div>
+
+<div id="verificationDetails" class="card mt-4" style="display: none;">
+    <div class="card-header">
+        <h3 class="text-center">Detalles de Verificación</h3>
+    </div>
+    <div class="card-body">
+        <table class="table table-striped">
+            <tbody id="verificationDetailsBody">
+                <!-- Verification details will be populated here -->
+            </tbody>
+        </table>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+$(document).ready(function() {
+    // Certificate Generation
+    $('#certificateForm').on('submit', function(e) {
+        e.preventDefault();
+        $.ajax({
+            url: '/ssl-certificates',
+            method: 'POST',
+            data: $(this).serialize(),
+            success: function(response) {
+                if (response.status === 'success') {
+                    const cert = response.certificate;
+                    
+                    // Display certificate details
+                    $('#certificatePEM').text(cert.certificate_pem);
+                    $('#privateKeyPEM').text(cert.private_key_pem);
+                    $('#issuerDetails').text(cert.issuer);
+                    $('#subjectDetails').text(cert.subject);
+                    $('#validFrom').text(cert.valid_from);
+                    $('#validTo').text(cert.valid_to);
+                    $('#serialNumber').text(cert.serial_number);
+                    
+                    $('#certificateDetails').show();
+                } else {
+                    alert('Error generando certificado: ' + response.message);
+                }
+            },
+            error: function() {
+                alert('Error en la solicitud');
+            }
+        });
+    });
+
+    // Certificate Verification
+    $('#verificationForm').on('submit', function(e) {
+        e.preventDefault();
+        $.ajax({
+            url: '/verify-certificate',
+            method: 'POST',
+            data: {
+                certificate: $('#certificateInput').val()
+            },
+            success: function(response) {
+                if (response.status === 'success') {
+                    const details = response.certificate_details;
+                    let verificationHTML = '';
+
+                    // Issuer Details
+                    verificationHTML += '<tr><th colspan="2" class="text-center">Detalles del Emisor</th></tr>';
+                    details.issuer_details.forEach(function(item) {
+                        verificationHTML += `<tr><td>${item.name}</td><td>${item.value}</td></tr>`;
+                    });
+
+                    // Subject Details
+                    verificationHTML += '<tr><th colspan="2" class="text-center">Detalles del Sujeto</th></tr>';
+                    details.subject_details.forEach(function(item) {
+                        verificationHTML += `<tr><td>${item.name}</td><td>${item.value}</td></tr>`;
+                    });
+
+                    // Additional Certificate Details
+                    verificationHTML += `
+                        <tr><th>Estado de Validez</th><td>${details.validity_status}</td></tr>
+                        <tr><th>Válido Desde</th><td>${details.valid_from}</td></tr>
+                        <tr><th>Válido Hasta</th><td>${details.valid_to}</td></tr>
+                        <tr><th>Número de Serie</th><td>${details.serial_number}</td></tr>
+                        <tr><th>Algoritmo de Firma</th><td>${details.signature_algorithm}</td></tr>
+                        <tr><th>Huella SHA-256</th><td>${details.sha256_fingerprint}</td></tr>
+                        <tr><th>Huella SHA-1</th><td>${details.sha1_fingerprint}</td></tr>
+                    `;
+
+                    // Public Key Details
+                    if (details.public_key_type) {
+                        verificationHTML += `
+                            <tr><th colspan="2" class="text-center">Detalles de la Llave Pública</th></tr>
+                            <tr><th>Tipo de Llave</th><td>${details.public_key_type}</td></tr>
+                            <tr><th>Tamaño de Llave</th><td>${details.public_key_size} bits</td></tr>
+                        `;
+                    }
+
+                    $('#verificationDetailsBody').html(verificationHTML);
+                    $('#verificationDetails').show();
+                } else {
+                    alert('Error verificando certificado: ' + response.message);
+                }
+            },
+            error: function() {
+                alert('Error en la solicitud de verificación');
+            }
+        });
+    });
+});
+</script>
+{% endblock %}

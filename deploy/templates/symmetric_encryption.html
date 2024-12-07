@@ -1,0 +1,119 @@
+```html
+{% extends "base.html" %}
+
+{% block content %}
+<h1 class="mb-4">Cifrado Simétrico</h1>
+
+<div class="card mb-4">
+    <div class="card-body">
+        <h5 class="card-title">Clave Simétrica Actual</h5>
+        <div class="input-group">
+            <input type="text" class="form-control" id="current-key" value="{{ symmetric_key }}" readonly>
+            <button class="btn btn-secondary" id="regenerate-key">Regenerar Clave</button>
+        </div>
+    </div>
+</div>
+
+<div class="row">
+    <div class="col-md-6">
+        <div class="card mb-4">
+            <div class="card-body">
+                <h5 class="card-title">Encriptar</h5>
+                <form id="encrypt-form">
+                    <div class="mb-3">
+                        <label for="encrypt-message" class="form-label">Mensaje</label>
+                        <textarea class="form-control" id="encrypt-message" rows="3" required></textarea>
+                    </div>
+                    <button type="submit" class="btn btn-primary">Encriptar</button>
+                </form>
+                <div class="mt-3">
+                    <label class="form-label">Mensaje Encriptado</label>
+                    <textarea class="form-control" id="encrypted-message" rows="3" readonly></textarea>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-6">
+        <div class="card mb-4">
+            <div class="card-body">
+                <h5 class="card-title">Desencriptar</h5>
+                <form id="decrypt-form">
+                    <div class="mb-3">
+                        <label for="decrypt-message" class="form-label">Mensaje Encriptado</label>
+                        <textarea class="form-control" id="decrypt-message" rows="3" required></textarea>
+                    </div>
+                    <button type="submit" class="btn btn-success">Desencriptar</button>
+                </form>
+                <div class="mt-3">
+                    <label class="form-label">Mensaje Desencriptado</label>
+                    <textarea class="form-control" id="decrypted-message" rows="3" readonly></textarea>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+$(document).ready(function() {
+    // Encrypt form submission
+    $('#encrypt-form').on('submit', function(e) {
+        e.preventDefault();
+        $.ajax({
+            url: '/symmetric-encryption',
+            method: 'POST',
+            data: {
+                action: 'encrypt',
+                message: $('#encrypt-message').val()
+            },
+            success: function(response) {
+                if (response.status === 'success') {
+                    $('#encrypted-message').val(response.encrypted_message);
+                } else {
+                    alert('Error: ' + response.message);
+                }
+            }
+        });
+    });
+
+    // Decrypt form submission
+    $('#decrypt-form').on('submit', function(e) {
+        e.preventDefault();
+        $.ajax({
+            url: '/symmetric-encryption',
+            method: 'POST',
+            data: {
+                action: 'decrypt',
+                message: $('#decrypt-message').val()
+            },
+            success: function(response) {
+                if (response.status === 'success') {
+                    $('#decrypted-message').val(response.decrypted_message);
+                } else {
+                    alert('Error: ' + response.message);
+                }
+            }
+        });
+    });
+
+    // Regenerate key
+    $('#regenerate-key').on('click', function() {
+        $.ajax({
+            url: '/symmetric-encryption',
+            method: 'POST',
+            data: { action: 'regenerate_key' },
+            success: function(response) {
+                if (response.status === 'success') {
+                    $('#current-key').val(response.symmetric_key);
+                    alert('Nueva clave generada exitosamente');
+                } else {
+                    alert('Error al regenerar la clave');
+                }
+            }
+        });
+    });
+});
+</script>
+{% endblock %}
+```

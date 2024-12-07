@@ -1,0 +1,144 @@
+{% extends "base.html" %}
+
+{% block title %}Funciones Hash{% endblock %}
+
+{% block additional_styles %}
+<style>
+    .hash-result {
+        word-break: break-all;
+        background-color: #f4f4f4;
+        padding: 10px;
+        border-radius: 5px;
+        margin-top: 10px;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="row">
+    <div class="col-md-12">
+        <h2 class="mb-4">Funciones Hash</h2>
+        
+        <div class="card mb-4">
+            <div class="card-header">
+                Calcular Hash
+            </div>
+            <div class="card-body">
+                <form id="calculateHashForm">
+                    <div class="mb-3">
+                        <label for="calculateText" class="form-label">Texto</label>
+                        <textarea class="form-control" id="calculateText" rows="3" required></textarea>
+                    </div>
+                    <div class="mb-3">
+                        <label for="calculateAlgorithm" class="form-label">Algoritmo</label>
+                        <select class="form-select" id="calculateAlgorithm" required>
+                            <option value="SHA-256">SHA-256</option>
+                            <option value="MD5">MD5</option>
+                            <option value="SHA-1">SHA-1</option>
+                        </select>
+                    </div>
+                    <button type="submit" class="btn btn-primary">Calcular Hash</button>
+                </form>
+                <div id="calculateHashResult" class="hash-result mt-3" style="display: none;"></div>
+            </div>
+        </div>
+
+        <div class="card">
+            <div class="card-header">
+                Verificar Hash
+            </div>
+            <div class="card-body">
+                <form id="verifyHashForm">
+                    <div class="mb-3">
+                        <label for="verifyText" class="form-label">Texto</label>
+                        <textarea class="form-control" id="verifyText" rows="3" required></textarea>
+                    </div>
+                    <div class="mb-3">
+                        <label for="verifyAlgorithm" class="form-label">Algoritmo</label>
+                        <select class="form-select" id="verifyAlgorithm" required>
+                            <option value="SHA-256">SHA-256</option>
+                            <option value="MD5">MD5</option>
+                            <option value="SHA-1">SHA-1</option>
+                        </select>
+                    </div>
+                    <div class="mb-3">
+                        <label for="knownHash" class="form-label">Hash Conocido</label>
+                        <input type="text" class="form-control" id="knownHash" required>
+                    </div>
+                    <button type="submit" class="btn btn-success">Verificar Hash</button>
+                </form>
+                <div id="verifyHashResult" class="hash-result mt-3" style="display: none;"></div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+$(document).ready(function() {
+    // Calculate Hash Form
+    $('#calculateHashForm').on('submit', function(e) {
+        e.preventDefault();
+        
+        $.ajax({
+            url: '/hash-functions',
+            method: 'POST',
+            data: {
+                action: 'calculate',
+                text: $('#calculateText').val(),
+                algorithm: $('#calculateAlgorithm').val()
+            },
+            success: function(response) {
+                if (response.status === 'success') {
+                    $('#calculateHashResult')
+                        .text(response.hash_value)
+                        .show();
+                } else {
+                    $('#calculateHashResult')
+                        .text('Error: ' + response.message)
+                        .show();
+                }
+            },
+            error: function() {
+                $('#calculateHashResult')
+                    .text('Error en la solicitud')
+                    .show();
+            }
+        });
+    });
+
+    // Verify Hash Form
+    $('#verifyHashForm').on('submit', function(e) {
+        e.preventDefault();
+        
+        $.ajax({
+            url: '/hash-functions',
+            method: 'POST',
+            data: {
+                action: 'verify',
+                text: $('#verifyText').val(),
+                algorithm: $('#verifyAlgorithm').val(),
+                known_hash: $('#knownHash').val()
+            },
+            success: function(response) {
+                if (response.status === 'success') {
+                    $('#verifyHashResult')
+                        .text(response.is_valid ? 'Hash Válido ✔️' : 'Hash Inválido ❌')
+                        .show();
+                } else {
+                    $('#verifyHashResult')
+                        .text('Error: ' + response.message)
+                        .show();
+                }
+            },
+            error: function() {
+                $('#verifyHashResult')
+                    .text('Error en la solicitud')
+                    .show();
+            }
+        });
+    });
+});
+</script>
+{% endblock %}

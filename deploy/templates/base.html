@@ -1,0 +1,100 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="description" content="Portafolio interactivo sobre temas de seguridad informática, incluyendo cifrado simétrico, asimétrico, funciones hash y certificados SSL.">
+  <link rel="icon" href="/static/favicon.ico" type="image/x-icon">
+  <title>{% block title %}Portafolio de Seguridad{% endblock %}</title>
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+  <style>
+    body {
+      padding-top: 70px;
+      background-color: #f8f9fa;
+      font-family: 'Arial', sans-serif;
+      color: #212529;
+    }
+    .container {
+      max-width: 900px;
+      background-color: #ffffff;
+      padding: 30px;
+      border-radius: 10px;
+      box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+    }
+    pre {
+      background-color: #f1f3f5;
+      padding: 15px;
+      border-radius: 5px;
+      overflow-x: auto;
+    }
+    .navbar-dark .navbar-nav .nav-link {
+      color: #000000;
+      transition: color 0.3s ease;
+    }
+    .navbar-dark .navbar-nav .nav-link:hover {
+      color: #adb5bd;
+    }
+    .navbar-brand {
+      font-weight: bold;
+    }
+    footer {
+      margin-top: 20px;
+      padding: 20px;
+      text-align: center;
+      font-size: 0.9rem;
+      color: #6c757d;
+      background-color: #f8f9fa;
+    }
+    footer a {
+      color: #6c757d;
+      text-decoration: none;
+    }
+    footer a:hover {
+      text-decoration: underline;
+    }
+  </style>
+  {% block additional_styles %}{% endblock %}
+</head>
+<body>
+  <!-- Navbar -->
+  <nav class="navbar navbar-expand-lg navbar-dark bg-dark fixed-top">
+    <div class="container">
+      <a class="navbar-brand" href="/">Portafolio de Seguridad</a>
+      <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav" aria-controls="navbarNav" aria-expanded="false" aria-label="Toggle navigation">
+        <span class="navbar-toggler-icon"></span>
+      </button>
+      <div class="collapse navbar-collapse" id="navbarNav">
+        <ul class="navbar-nav ms-auto">
+          <li class="nav-item">
+            <a class="nav-link" href="/symmetric-encryption">Cifrado Simétrico</a>
+          </li>
+          <li class="nav-item">
+            <a class="nav-link" href="/asymmetric-encryption">Cifrado Asimétrico</a>
+          </li>
+          <li class="nav-item">
+            <a class="nav-link" href="/hash-functions">Funciones Hash</a>
+          </li>
+          <li class="nav-item">
+            <a class="nav-link" href="/ssl-certificates">Certificados SSL</a>
+          </li>
+        </ul>
+      </div>
+    </div>
+  </nav>
+
+  <!-- Main Content -->
+  <div class="container">
+    {% block content %}{% endblock %}
+  </div>
+
+  <!-- Footer -->
+  <footer>
+    &copy; 2024 Portafolio de Seguridad | Desarrollado con ❤️ por <a href="#">Victor</a>
+  </footer>
+
+  <!-- Scripts -->
+  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js" integrity="sha384-YOUR_HASH_HERE" crossorigin="anonymous"></script>
+  <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+  {% block scripts %}{% endblock %}
+</body>
+</html>
