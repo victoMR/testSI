@@ -1,9 +1,9 @@
 from main import app
+
+##Implementando cors para toos los origenes
+
 from flask_cors import CORS
-
-# Habilir CORS para * (todos los dominios)
-
-CORS(app)
+CORS(app, resources={r"/*": {"origins": "*"}})
 
 if __name__ == '__main__':
-    app.run(host='https://testsi-1.onrender.com', port=5000)
+    app.run(host='https://testsi-1.onrender.com/', port=5000)
